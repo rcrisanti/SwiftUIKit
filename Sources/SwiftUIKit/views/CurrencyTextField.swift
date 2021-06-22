@@ -8,7 +8,7 @@
 import SwiftUI
 import UIKit
 
-public struct CurrencyTextField: UIViewRepresentable {
+public struct CurrencyField: UIViewRepresentable {
     
     @Binding var value: Double?
     private var isResponder: Binding<Bool>?
@@ -45,7 +45,7 @@ public struct CurrencyTextField: UIViewRepresentable {
         value: Binding<Double?>,
         isResponder: Binding<Bool>? = nil,
         tag: Int = 0,
-        alwaysShowFractions: Bool = false,
+        alwaysShowFractions: Bool = true,
         numberOfDecimalPlaces: Int = 2,
         currencySymbol: String? = nil,
         font: UIFont? = nil,
@@ -87,7 +87,7 @@ public struct CurrencyTextField: UIViewRepresentable {
         self.onEditingChanged = onEditingChanged
     }
     
-    public func makeUIView(context: UIViewRepresentableContext<CurrencyTextField>) -> UITextField {
+    public func makeUIView(context: UIViewRepresentableContext<CurrencyField>) -> UITextField {
         
         let textField = UITextField()
         textField.delegate = context.coordinator
@@ -180,13 +180,13 @@ public struct CurrencyTextField: UIViewRepresentable {
         return textField
     }
     
-    public func makeCoordinator() -> CurrencyTextField.Coordinator {
+    public func makeCoordinator() -> CurrencyField.Coordinator {
         Coordinator(value: $value, isResponder: self.isResponder, alwaysShowFractions: self.alwaysShowFractions, numberOfDecimalPlaces: self.numberOfDecimalPlaces, currencySymbol: self.currencySymbol, onReturn: self.onReturn){ flag in
             self.onEditingChanged(flag)
         }
     }
     
-    public func updateUIView(_ textField: UITextField, context: UIViewRepresentableContext<CurrencyTextField>) {
+    public func updateUIView(_ textField: UITextField, context: UIViewRepresentableContext<CurrencyField>) {
         
         // value
         if self.value != context.coordinator.internalValue {
@@ -209,7 +209,7 @@ public struct CurrencyTextField: UIViewRepresentable {
         // otherwise many uibugs when using NavigationView
     }
     
-    public static func dismantleUIView(_ uiView: UITextField, coordinator: CurrencyTextField.Coordinator) {
+    public static func dismantleUIView(_ uiView: UITextField, coordinator: CurrencyField.Coordinator) {
         // nothing to cleanup
     }
     
@@ -389,10 +389,10 @@ fileprivate extension String {
         // then calls Double on the string
         var d = decimals
         if d.count == 0 {
-            return nil
+            return 0
         }
         d = d.replacingOccurrences(of: ",", with: ".")
-        return Double(d) ?? 0
+        return (Double(d) ?? 0) * (isNegative ? -1 : 1)
     }
     
     var isNegative: Bool {
@@ -410,7 +410,8 @@ fileprivate extension String {
         }
         
         // Allow currency to be negative
-        let signed = double * (isNegative ? -1 : 1)
+//        let signed = double * (isNegative ? -1 : 1)
+        let unsigned = abs(double)
         
         let formatter = Formatter.currency
         
@@ -422,14 +423,14 @@ fileprivate extension String {
             formatter.minimumFractionDigits = min(fractionDigits, decimalPlaces != nil ? decimalPlaces! : 2)
             formatter.maximumFractionDigits = min(fractionDigits, decimalPlaces != nil ? decimalPlaces! : 2)
             
-            let formatted = formatter.string(from: NSNumber(value: signed))
+            let formatted = formatter.string(from: NSNumber(value: unsigned))
             
             // show dot if exists
             if let formatted = formatted, fractionDigits == 0 {
                 return "\(formatted)" + (Locale.current.decimalSeparator ?? ".")
             }
             
-            return formatted
+            return (isNegative ? "-" : "") + (formatted ?? "")
         }
         
         if currencySymbol != nil {
@@ -437,8 +438,8 @@ fileprivate extension String {
         }
         
         formatter.maximumFractionDigits = 0
-        let formatted = formatter.string(from: NSNumber(value: signed))
-        return formatted
+        let formatted = formatter.string(from: NSNumber(value: unsigned))
+        return (isNegative ? "-" : "") + (formatted ?? "")
     }
 }
 
